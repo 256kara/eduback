@@ -66,7 +66,12 @@ app.use("/api/teachers", teacherRoutes);
 app.use("/api/assignments", assignmentRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/bulk", uploadRoutes);
-
+// Serve static files
+app.use(express.static("."));
+// Teacher management page
+app.get("/teachers", (req, res) => {
+  res.sendFile(__dirname + "/teacher-management.html");
+});
 // Test route
 app.get("/app", (req, res) => {
   const data = {

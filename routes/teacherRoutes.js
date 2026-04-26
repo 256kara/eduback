@@ -11,7 +11,7 @@ const {
 } = require("../controllers/teacherController");
 
 router.post("/", signupTeacher);
-router.get("/school/:school_id", getTeachers);
+router.get("/school/:school_name", getTeachers);
 router.get("/:id", getTeacher);
 router.put("/:id", updateTeacher);
 router.patch("/:id/role", assignTeacherRole);

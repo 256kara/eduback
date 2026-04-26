@@ -158,13 +158,11 @@ exports.updateTeacher = async (req, res) => {
       },
     );
 
-    res
-      .status(200)
-      .json({
-        message: "Teacher updated successfully.",
-        updatedTeacher,
-        updatedUser,
-      });
+    res.status(200).json({
+      message: "Teacher updated successfully.",
+      updatedTeacher,
+      updatedUser,
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -193,13 +191,11 @@ exports.assignTeacherRole = async (req, res) => {
       { new: true },
     );
 
-    res
-      .status(200)
-      .json({
-        message: "Teacher role updated successfully.",
-        teacher,
-        user: updatedUser,
-      });
+    res.status(200).json({
+      message: "Teacher role updated successfully.",
+      teacher,
+      user: updatedUser,
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -207,10 +203,15 @@ exports.assignTeacherRole = async (req, res) => {
 
 exports.getTeachers = async (req, res) => {
   try {
-    const { school_id } = req.params;
+    const { school_name } = req.params;
     const { search, status, role } = req.query;
 
-    const filter = { school: school_id };
+    const school = await School.findOne({ name: school_name });
+    if (!school) {
+      return res.status(404).json({ error: "School not found." });
+    }
+
+    const filter = { school: school._id };
     if (search) {
       filter.$or = [
         { name: new RegExp(search, "i") },
