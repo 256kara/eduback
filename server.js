@@ -12,6 +12,9 @@ const uploadRoutes = require("./routes/uploadRoutes");
 const teacherRoutes = require("./routes/teacherRoutes");
 const assignmentRoutes = require("./routes/assignmentsRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
+const dns = require("node:dns/promises");
+
+dns.setServers(["1.1.1.1", "8.8.8.8"]); // Cloudflare + Google DNS
 
 // Middlewares
 app.use(

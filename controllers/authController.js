@@ -9,6 +9,10 @@ exports.signupSuperAdmin = async (req, res) => {
     // signup details from request body
     const { name, email, password, school_name, phone } = req.body;
 
+    // normalize name and email
+    const normalizedName = name.trim().toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
+
     // find school match
     let school = await School.findOne({ name: school_name });
 
@@ -23,8 +27,8 @@ exports.signupSuperAdmin = async (req, res) => {
     // password hashing
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({
-      name,
-      email,
+      name: normalizedName,
+      email: normalizedEmail,
       password: hashedPassword,
       role: "super-admin",
       school: school._id,
@@ -43,7 +47,7 @@ exports.signupSuperAdmin = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     let { name, email, password, school_name } = req.body;
-    name = name.trim();
+    name = name.trim().toLowerCase();
     email = email.trim().toLowerCase();
     school_name = school_name.trim();
 
@@ -65,6 +69,7 @@ exports.login = async (req, res) => {
       school_name: school.name,
       school_id: school._id,
       name: user.name,
+      displayName: user.displayName,
     };
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: "24h",

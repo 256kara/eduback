@@ -6,11 +6,15 @@ const {
   deleteTeacher,
   updateTeacher,
   getTeachers,
+  getTeacher,
+  assignTeacherRole,
 } = require("../controllers/teacherController");
 
-router.post("/signup", signupTeacher);
-router.post("/delete", deleteTeacher);
-router.post("/update", updateTeacher);
-router.get("/get", getTeachers);
+router.post("/", signupTeacher);
+router.get("/school/:school_id", getTeachers);
+router.get("/:id", getTeacher);
+router.put("/:id", updateTeacher);
+router.patch("/:id/role", assignTeacherRole);
+router.delete("/:id", deleteTeacher);
 
 module.exports = router;
