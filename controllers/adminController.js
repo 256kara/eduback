@@ -9,6 +9,7 @@ const Teacher = require("../models/Teacher");
 const Payment = require("../models/Payment");
 const Attendance = require("../models/Attendance");
 const Result = require("../models/Result");
+const Assignment = require("../models/Assignment");
 
 // Add a student -- cleared, create student with user relationship, student and user created together, no orphan student or user
 exports.addStudent = async (req, res) => {
@@ -82,7 +83,7 @@ exports.addStudent = async (req, res) => {
       emergencyContact,
       username,
       lin,
-      password,
+      password: hashedPassword,
     });
 
     // student.subjects.push(subject._id);
@@ -143,19 +144,24 @@ exports.updateStudent = async (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    const updatedUser = await User.findByIdAndUpdate(id, data, {
-      new: true,
-    });
+    let editingstudent = await Student.findById(id);
+    if (!editingstudent) {
+      return res.json({ message: "No such student found" });
+    }
 
-    const updatedStudent = await Student.findOneAndUpdate(
-      { userId: id },
+    const updatedUser = await User.findByIdAndUpdate(
+      editingstudent.userId,
       data,
       {
         new: true,
       },
     );
 
-    res.json({ updatedStudent, updatedUser });
+    const updatedStudent = await Student.findByIdAndUpdate(id, data, {
+      new: true,
+    });
+
+    res.json({ message: "Student updated successfully" });
   } catch (err) {
     res.status(400).json(err.message);
   }
@@ -470,5 +476,62 @@ exports.markResults = async (req, res) => {
     res.json({ message: "Result marked successfully." });
   } catch (err) {
     res.status(400).json(err.message);
+  }
+};
+
+// Get assignments for a school
+exports.getAssignments = async (req, res) => {
+  try {
+    const { school_name } = req.params;
+    const { search, class: classFilter, subject } = req.query;
+
+    const school = await School.findOne({ name: school_name });
+    if (!school) {
+      return res.status(404).json({ error: "School not found" });
+    }
+
+    let query = { school_name: school._id };
+
+    if (search) {
+      query.title = { $regex: search, $options: "i" };
+    }
+    if (classFilter) {
+      query.classLevel = classFilter;
+    }
+    if (subject) {
+      query.Subject = subject;
+    }
+
+    const assignments = await Assignment.find(query).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      message: "Assignments fetched successfully",
+      assignments,
+    });
+  } catch (err) {
+    res
+      .status(400)
+      .json({ error: err.message || "Failed to fetch assignments" });
+  }
+};
+
+// Delete assignment
+exports.deleteAssignment = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const assignment = await Assignment.findByIdAndDelete(id);
+
+    if (!assignment) {
+      return res.status(404).json({ error: "Assignment not found" });
+    }
+
+    res.status(200).json({
+      message: "Assignment deleted successfully",
+    });
+  } catch (err) {
+    res
+      .status(400)
+      .json({ error: err.message || "Failed to delete assignment" });
   }
 };

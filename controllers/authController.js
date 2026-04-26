@@ -7,23 +7,7 @@ const jwt = require("jsonwebtoken");
 exports.signupSuperAdmin = async (req, res) => {
   try {
     // signup details from request body
-    const {
-      name,
-      email,
-      password,
-      school_name,
-      phone,
-      location,
-      plan,
-      isActive,
-    } = req.body;
-
-    name = name.trim();
-    email = email.trim().toLowerCase();
-    school_name = school_name.trim();
-    phone = phone.trim();
-    location = location.trim();
-    plan = plan.trim();
+    const { name, email, password, school_name, phone } = req.body;
 
     // find school match
     let school = await School.findOne({ name: school_name });
@@ -33,7 +17,7 @@ exports.signupSuperAdmin = async (req, res) => {
       return res.json({ school_error: "That school is already registered!" });
     }
 
-    school = new School({ name: school_name, location, plan, isActive });
+    school = new School({ name: school_name });
     await school.save();
 
     // password hashing
@@ -45,12 +29,11 @@ exports.signupSuperAdmin = async (req, res) => {
       role: "super-admin",
       school: school._id,
       phone,
-      isActive,
     });
 
     // saving user
     await user.save();
-    res.status(200).json({ message: "Super Admin created" });
+    res.status(200).json({ message: "School Account created" });
   } catch (err) {
     res.status(400).json(err.message);
   }
@@ -75,6 +58,7 @@ exports.login = async (req, res) => {
     if (!user || !(await bcrypt.compare(password, user.password)) || !school) {
       return res.json({ error: "Invalid credentials" });
     }
+
     const payload = {
       id: user._id,
       role: user.role,
@@ -87,7 +71,7 @@ exports.login = async (req, res) => {
     });
     res.json({ token: token });
   } catch (err) {
-    res.status(400).json({ error: err.message || "Login failed" });
+    res.status(400).json({ error: err.message || "Login faileds" });
   }
 };
 

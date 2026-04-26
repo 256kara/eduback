@@ -17,6 +17,8 @@ const {
   createSubject,
   markResults,
   loadProfile,
+  getAssignments,
+  deleteAssignment,
 } = require("../controllers/adminController");
 
 router.post("/signup-admin", signupAdmin); // signup normal admin -- cleared
@@ -34,4 +36,6 @@ router.put("/edit-attendance/:attendance_id", editAttendance); // edit attendanc
 router.post("/create-subject", createSubject); // create subject -- cleared, subject created with reference to the school, only admin and super-admin can create subject
 router.post("/mark-results/:student_id", markResults); // mark results for a student -- cleared, results marked by admin, teacher or super-admin, result record created with reference to the user who marked it
 router.post("/load-profile/:school_id", loadProfile); // super-admin profile
+router.get("/assignments/:school_name", getAssignments); // get assignments for a school
+router.delete("/assignments/:id", deleteAssignment); // delete assignment
 module.exports = router;

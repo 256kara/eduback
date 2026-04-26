@@ -10,6 +10,8 @@ const messageRoutes = require("./routes/messageRoutes");
 const jwt = require("jsonwebtoken");
 const uploadRoutes = require("./routes/uploadRoutes");
 const teacherRoutes = require("./routes/teacherRoutes");
+const assignmentRoutes = require("./routes/assignmentsRoutes");
+const attendanceRoutes = require("./routes/attendanceRoutes");
 
 // Middlewares
 app.use(
@@ -58,6 +60,8 @@ app.use(checkToken);
 app.use("/api/admin", adminRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/teachers", teacherRoutes);
+app.use("/api/assignments", assignmentRoutes);
+app.use("/api/attendance", attendanceRoutes);
 app.use("/api/bulk", uploadRoutes);
 
 // Test route
