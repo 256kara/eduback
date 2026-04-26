@@ -138,6 +138,105 @@ exports.getStudents = async (req, res) => {
   }
 };
 
+exports.saveAttendanceRecords = async (req, res) => {
+  try {
+    const { attendance } = req.body;
+    if (!Array.isArray(attendance) || attendance.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "Attendance must be a non-empty array" });
+    }
+
+    const { date, classLevel, school_name } = attendance[0];
+    if (!date || !classLevel || !school_name) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Attendance records must include date, classLevel, and school_name",
+        });
+    }
+
+    const school = await School.findOne({ name: school_name });
+    if (!school) {
+      return res.status(404).json({ error: "School not found" });
+    }
+
+    const attendanceDate = new Date(date);
+    const nextDay = new Date(attendanceDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    const studentIds = attendance
+      .map((record) => record.studentId)
+      .filter(Boolean);
+
+    await Attendance.deleteMany({
+      school: school._id,
+      student: { $in: studentIds },
+      date: { $gte: attendanceDate, $lt: nextDay },
+    });
+
+    const attendanceDocs = attendance.map((record) => ({
+      student: record.studentId,
+      status: record.status,
+      date: new Date(record.date),
+      school: school._id,
+    }));
+
+    const savedAttendance = await Attendance.insertMany(attendanceDocs);
+    res
+      .status(201)
+      .json({
+        message: "Attendance saved successfully",
+        attendance: savedAttendance,
+      });
+  } catch (err) {
+    res.status(400).json({ error: err.message || "Failed to save attendance" });
+  }
+};
+
+exports.getAttendanceBySchool = async (req, res) => {
+  try {
+    const { school_name } = req.params;
+    const { date, class: classLevel } = req.query;
+
+    const school = await School.findOne({ name: school_name });
+    if (!school) {
+      return res.status(404).json({ error: "School not found" });
+    }
+
+    const query = { school: school._id };
+
+    if (date) {
+      const start = new Date(date);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      query.date = { $gte: start, $lt: end };
+    }
+
+    if (classLevel) {
+      const studentsInClass = await Student.find(
+        { school: school._id, classLevel },
+        "_id",
+      );
+      query.student = { $in: studentsInClass.map((student) => student._id) };
+    }
+
+    const attendanceRecords = await Attendance.find(query).lean();
+    const attendance = attendanceRecords.map((record) => ({
+      studentId: record.student.toString(),
+      status: record.status,
+      date: record.date,
+    }));
+
+    res.json({ attendance });
+  } catch (err) {
+    res
+      .status(400)
+      .json({ error: err.message || "Failed to fetch attendance" });
+  }
+};
+
 // Update a student based on their _id -- cleared
 exports.updateStudent = async (req, res) => {
   try {
@@ -533,5 +632,250 @@ exports.deleteAssignment = async (req, res) => {
     res
       .status(400)
       .json({ error: err.message || "Failed to delete assignment" });
+  }
+};
+
+// Teacher management functions
+const normalizeString = (value) =>
+  typeof value === "string" ? value.trim().toLowerCase() : value;
+
+const getTeacherByIdOrUserId = async (id) => {
+  return Teacher.findOne({ $or: [{ _id: id }, { userId: id }] });
+};
+
+exports.signupTeacher = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      password,
+      school_name,
+      phone,
+      role,
+      subjects,
+      qualification,
+      experience,
+      address,
+      status,
+      gender,
+    } = req.body;
+
+    if (!name || !email || !password || !school_name) {
+      return res
+        .status(400)
+        .json({ error: "Name, email, password, and school are required." });
+    }
+
+    const school = await School.findOne({ name: school_name });
+    if (!school) {
+      return res.status(404).json({ error: "No such school found." });
+    }
+
+    const normalizedEmail = normalizeString(email);
+    const normalizedName = normalizeString(name);
+    const userExists = await User.findOne({
+      email: normalizedEmail,
+      school: school._id,
+    });
+    if (userExists) {
+      return res.status(409).json({
+        error: "A user with this email already exists in your school.",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const userRole = role === "admin" ? "admin" : "teacher";
+
+    const user = new User({
+      name: normalizedName,
+      email: normalizedEmail,
+      password: hashedPassword,
+      phone,
+      role: userRole,
+      school: school._id,
+      gender,
+    });
+    await user.save();
+
+    const teacher = new Teacher({
+      name: user.name,
+      userId: user._id,
+      school: school._id,
+      email: user.email,
+      phone,
+      gender,
+      subjects,
+      qualification,
+      experience,
+      address,
+      status,
+      role: userRole,
+    });
+    await teacher.save();
+
+    res.status(201).json({ message: "Teacher created successfully.", teacher });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+exports.deleteTeacher = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const teacher = await getTeacherByIdOrUserId(id);
+    if (!teacher) {
+      return res.status(404).json({ error: "No such teacher found." });
+    }
+
+    await User.findByIdAndDelete(teacher.userId);
+    await Teacher.findByIdAndDelete(teacher._id);
+
+    res.status(200).json({ message: "Teacher deleted successfully." });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+exports.updateTeacher = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      name,
+      email,
+      phone,
+      gender,
+      subjects,
+      qualification,
+      experience,
+      address,
+      status,
+    } = req.body;
+    const teacher = await getTeacherByIdOrUserId(id);
+    if (!teacher) {
+      return res.status(404).json({ error: "No such teacher found." });
+    }
+
+    const teacherUpdate = {
+      ...(name ? { name: normalizeString(name) } : {}),
+      ...(email ? { email: normalizeString(email) } : {}),
+      ...(phone ? { phone } : {}),
+      ...(gender ? { gender } : {}),
+      ...(subjects ? { subjects } : {}),
+      ...(qualification ? { qualification } : {}),
+      ...(experience ? { experience } : {}),
+      ...(address ? { address } : {}),
+      ...(status ? { status } : {}),
+      updatedAt: Date.now(),
+    };
+
+    const updatedTeacher = await Teacher.findByIdAndUpdate(
+      teacher._id,
+      teacherUpdate,
+      {
+        new: true,
+      },
+    );
+
+    const userUpdate = {
+      ...(name ? { name: normalizeString(name) } : {}),
+      ...(email ? { email: normalizeString(email) } : {}),
+      ...(phone ? { phone } : {}),
+      ...(gender ? { gender } : {}),
+    };
+
+    const updatedUser = await User.findByIdAndUpdate(
+      teacher.userId,
+      userUpdate,
+      {
+        new: true,
+      },
+    );
+
+    res.status(200).json({
+      message: "Teacher updated successfully.",
+      updatedTeacher,
+      updatedUser,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+exports.assignTeacherRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    if (!role || !["teacher", "admin"].includes(role)) {
+      return res
+        .status(400)
+        .json({ error: "Role must be either 'teacher' or 'admin'." });
+    }
+
+    const teacher = await getTeacherByIdOrUserId(id);
+    if (!teacher) {
+      return res.status(404).json({ error: "No such teacher found." });
+    }
+
+    teacher.role = role;
+    await teacher.save();
+    const updatedUser = await User.findByIdAndUpdate(
+      teacher.userId,
+      { role },
+      { new: true },
+    );
+
+    res.status(200).json({
+      message: "Teacher role updated successfully.",
+      teacher,
+      user: updatedUser,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+exports.getTeachers = async (req, res) => {
+  try {
+    const { school_name } = req.params;
+    const { search, status, role } = req.query;
+
+    const school = await School.findOne({ name: school_name });
+    if (!school) {
+      return res.status(404).json({ error: "School not found." });
+    }
+
+    const filter = { school: school._id };
+    if (search) {
+      filter.$or = [
+        { name: new RegExp(search, "i") },
+        { email: new RegExp(search, "i") },
+      ];
+    }
+    if (status) filter.status = status;
+    if (role) filter.role = role;
+
+    const teachers = await Teacher.find(filter)
+      .populate("userId", "name email role phone gender")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ count: teachers.length, teachers });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+exports.getTeacher = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const teacher = await Teacher.findOne({
+      $or: [{ _id: id }, { userId: id }],
+    }).populate("userId", "name email role phone gender");
+    if (!teacher) {
+      return res.status(404).json({ error: "No such teacher found." });
+    }
+
+    res.status(200).json({ teacher });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };

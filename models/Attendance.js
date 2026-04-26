@@ -29,7 +29,7 @@ const attendanceSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     role: ["admin", "teacher", "super-admin"],
-    required: true,
+    required: false,
   },
 });
 
