@@ -12,6 +12,7 @@ const uploadRoutes = require("./routes/uploadRoutes");
 const teacherRoutes = require("./routes/teacherRoutes");
 const assignmentRoutes = require("./routes/assignmentsRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
+const timetableRoutes = require("./routes/timetableRoutes");
 const dns = require("node:dns/promises");
 
 dns.setServers(["1.1.1.1", "8.8.8.8"]); // Cloudflare + Google DNS
@@ -19,7 +20,7 @@ dns.setServers(["1.1.1.1", "8.8.8.8"]); // Cloudflare + Google DNS
 // Middlewares
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "https://edupulse-dash.vercel.app/",
   }),
 );
 app.use(express.json());
@@ -65,6 +66,7 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/teachers", teacherRoutes);
 app.use("/api/assignments", assignmentRoutes);
 app.use("/api/attendance", attendanceRoutes);
+app.use("/api/timetable", timetableRoutes);
 app.use("/api/bulk", uploadRoutes);
 // Serve static files
 app.use(express.static("."));

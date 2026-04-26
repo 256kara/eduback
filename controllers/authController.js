@@ -10,19 +10,37 @@ exports.signupSuperAdmin = async (req, res) => {
     const { name, email, password, school_name, phone } = req.body;
 
     // normalize name and email
-    const normalizedName = name.trim().toLowerCase();
+    const normalizedName = name.trim();
     const normalizedEmail = email.trim().toLowerCase();
+    const normalizedSchoolName = school_name.trim();
 
-    // find school match
-    let school = await School.findOne({ name: school_name });
-
-    // if no school match, create the school
-    if (school) {
-      return res.json({ school_error: "That school is already registered!" });
+    // check if user with this email already exists
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ error: "A user with this email already exists!" });
     }
 
-    school = new School({ name: school_name });
-    await school.save();
+    // find school match
+    let school = await School.findOne({ name: normalizedSchoolName });
+
+    if (school) {
+      // check if super admin already exists for this school
+      const existingSuperAdmin = await User.findOne({
+        school: school._id,
+        role: "super-admin",
+      });
+      if (existingSuperAdmin) {
+        return res
+          .status(400)
+          .json({ error: "A super admin already exists for this school!" });
+      }
+    } else {
+      // create the school
+      school = new School({ name: normalizedSchoolName });
+      await school.save();
+    }
 
     // password hashing
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -37,9 +55,11 @@ exports.signupSuperAdmin = async (req, res) => {
 
     // saving user
     await user.save();
-    res.status(200).json({ message: "School Account created" });
+    res
+      .status(200)
+      .json({ message: "Super Admin account created successfully!" });
   } catch (err) {
-    res.status(400).json(err.message);
+    res.status(400).json({ error: err.message });
   }
 };
 
@@ -47,7 +67,7 @@ exports.signupSuperAdmin = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     let { name, email, password, school_name } = req.body;
-    name = name.trim().toLowerCase();
+    name = name.trim();
     email = email.trim().toLowerCase();
     school_name = school_name.trim();
 
@@ -69,7 +89,6 @@ exports.login = async (req, res) => {
       school_name: school.name,
       school_id: school._id,
       name: user.name,
-      displayName: user.displayName,
     };
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: "24h",
