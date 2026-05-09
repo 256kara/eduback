@@ -20,7 +20,8 @@ dns.setServers(["1.1.1.1", "8.8.8.8"]); // Cloudflare + Google DNS
 // Middlewares
 app.use(
   cors({
-    origin: "https://edupulse-dash.vercel.app/",
+    origin: "https://edupulse-dash.vercel.app",
+    credentials: true,
   }),
 );
 app.use(express.json());
@@ -47,16 +48,6 @@ function checkToken(req, res, next) {
 app.get("/", (req, res) => {
   res.json({ message: "API is running..." });
   console.log("API is running");
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || "Something went wrong",
-  });
 });
 
 app.use("/api/auth", authRoutes); // signup and login for super-admin, done.
@@ -95,5 +86,15 @@ const startServer = async () => {
     process.exit(1);
   }
 };
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Something went wrong",
+  });
+});
 
 startServer();
